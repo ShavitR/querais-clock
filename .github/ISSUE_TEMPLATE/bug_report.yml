@@ -1,0 +1,22 @@
+name: Bug report
+description: Report a reproducible app or rendering problem.
+labels: [bug]
+body:
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: What happened?
+      description: Include reproduction steps and expected versus actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Windows/app version, display scale, chosen clock, finish and theme.
+    validations:
+      required: true
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot or additional context

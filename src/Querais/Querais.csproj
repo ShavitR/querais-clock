@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+ <PropertyGroup>
+  <OutputType>WinExe</OutputType><TargetFramework>net10.0-windows</TargetFramework><UseWPF>true</UseWPF><UseWindowsForms>true</UseWindowsForms>
+  <NoWarn>$(NoWarn);WFO0003</NoWarn><Nullable>enable</Nullable><ImplicitUsings>disable</ImplicitUsings><ApplicationManifest>app.manifest</ApplicationManifest><ApplicationIcon>../../assets/querais.ico</ApplicationIcon>
+  <AssemblyName>Querais</AssemblyName><Version>1.1.0</Version><Product>Querais Clock</Product><Description>A native Windows clock collection with interactive 3D objects.</Description><RepositoryUrl>https://github.com/ShavitR/querais-clock</RepositoryUrl><PackageLicenseExpression>MIT</PackageLicenseExpression><DebugType>portable</DebugType>
+ </PropertyGroup>
+ <ItemGroup><Content Include="../../assets/collection/*.mesh.json.gz"><Link>assets/collection/%(Filename)%(Extension)</Link><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content></ItemGroup>
+</Project>

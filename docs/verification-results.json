@@ -1,0 +1,207 @@
+[
+  {
+    "test": "visible Analog selector",
+    "passed": true
+  },
+  {
+    "test": "visible Digital selector",
+    "passed": true
+  },
+  {
+    "test": "visible Sculpture selector",
+    "passed": true
+  },
+  {
+    "test": "native always-on-top control",
+    "passed": true
+  },
+  {
+    "test": "compact control",
+    "passed": true
+  },
+  {
+    "capture": "01-sculpture-dark",
+    "width": 1164,
+    "height": 851
+  },
+  {
+    "capture": "02-sculpture-light",
+    "width": 1164,
+    "height": 851
+  },
+  {
+    "capture": "03-analog-precision",
+    "width": 1164,
+    "height": 851
+  },
+  {
+    "capture": "04-analog-studio",
+    "width": 1164,
+    "height": 851
+  },
+  {
+    "capture": "05-typography",
+    "width": 1164,
+    "height": 851
+  },
+  {
+    "capture": "06-split-flap",
+    "width": 1164,
+    "height": 851
+  },
+  {
+    "capture": "07-segment",
+    "width": 1164,
+    "height": 851
+  },
+  {
+    "capture": "08-small-window",
+    "width": 624,
+    "height": 611
+  },
+  {
+    "capture": "09-compact-focus",
+    "width": 504,
+    "height": 491
+  },
+  {
+    "capture": "10-timer",
+    "width": 1164,
+    "height": 851
+  },
+  {
+    "test": "direct timer input beyond 24 hours",
+    "passed": true
+  },
+  {
+    "test": "invalid numeric input does not start timer",
+    "passed": true
+  },
+  {
+    "test": "invalid edited duration cannot resume paused timer",
+    "passed": true
+  },
+  {
+    "test": "running timer field disabled after changing views",
+    "passed": true
+  },
+  {
+    "test": "timer completion across view change",
+    "passed": true
+  },
+  {
+    "test": "stopwatch records running lap",
+    "passed": true
+  },
+  {
+    "capture": "11-stopwatch",
+    "width": 1164,
+    "height": 851
+  },
+  {
+    "test": "stopwatch pause holds elapsed time",
+    "passed": true
+  },
+  {
+    "capture": "12-alarms",
+    "width": 1164,
+    "height": 851
+  },
+  {
+    "test": "alarm fires once and disables one-shot",
+    "passed": true
+  },
+  {
+    "test": "3D rendering pauses while minimized",
+    "passed": true
+  },
+  {
+    "test": "3D rendering pauses while hidden",
+    "passed": true
+  },
+  {
+    "test": "exploded assembly opens from visible control",
+    "passed": true
+  },
+  {
+    "capture": "16-atelier-exploded",
+    "width": 1164,
+    "height": 851
+  },
+  {
+    "test": "rear view rotates to caseback",
+    "angle": -179.99924898310508,
+    "passed": true
+  },
+  {
+    "capture": "17-atelier-caseback",
+    "width": 1164,
+    "height": 851
+  },
+  {
+    "test": "glass control hides actual crystal mesh",
+    "passed": true
+  },
+  {
+    "test": "orbit changes live mesh orientation",
+    "passed": true
+  },
+  {
+    "test": "interactive lighting direction and intensity",
+    "passed": true
+  },
+  {
+    "test": "crown changes smooth or ticking seconds",
+    "passed": true
+  },
+  {
+    "test": "turntable animates model",
+    "before": -12.987977416058746,
+    "after": -5.531294083928635,
+    "passed": true
+  },
+  {
+    "test": "orbit angle stays continuous across multiple revolutions",
+    "passed": true
+  },
+  {
+    "test": "split-flap replay activates real moving plates",
+    "passed": true
+  },
+  {
+    "capture": "18-relay-flipping",
+    "width": 1164,
+    "height": 851
+  },
+  {
+    "test": "reduced motion suppresses mechanical transition",
+    "passed": true
+  },
+  {
+    "test": "luminous native segment meshes follow digit masks",
+    "passed": true
+  },
+  {
+    "capture": "19-flat-fallback",
+    "width": 1164,
+    "height": 851
+  },
+  {
+    "test": "flat face remains available",
+    "passed": true
+  },
+  {
+    "capture": "20-small-digital-object",
+    "width": 624,
+    "height": 611
+  },
+  {
+    "capture": "13-settings-underlying-window",
+    "width": 1164,
+    "height": 851
+  },
+  {
+    "test": "preferences round trip",
+    "passed": true
+  }
+]

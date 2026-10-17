@@ -1,0 +1,1 @@
+<Window x:Class="Querais.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Querais" Width="1180" Height="890" MinWidth="520" MinHeight="530" WindowStartupLocation="CenterScreen" Background="#191C20" FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="13" Foreground="#F2F0E9"/>

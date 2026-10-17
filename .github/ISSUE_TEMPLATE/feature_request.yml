@@ -1,0 +1,16 @@
+name: Idea or improvement
+description: Suggest a focused improvement to Querais.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would this help you do?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Your proposed improvement
+    validations:
+      required: true
