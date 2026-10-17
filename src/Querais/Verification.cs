@@ -11,11 +11,11 @@ public static class Verification {
  public static async Task Run(MainWindow w){
   var location=new DirectoryInfo(AppContext.BaseDirectory);while(location!=null&&!File.Exists(Path.Combine(location.FullName,"src","Querais","Querais.csproj")))location=location.Parent;
   string dest=location!=null?Path.Combine(location.FullName,"artifacts","qa"):Path.Combine(Preferences.Folder,"verification");Directory.CreateDirectory(dest);
-  var results=new List<object>();var p=w.Settings;var original=JsonSerializer.Serialize(p);
-  async Task Capture(string file){await Task.Delay(350);w.UpdateLayout();var visual=(FrameworkElement)w.Content;var bmp=new RenderTargetBitmap((int)visual.ActualWidth,(int)visual.ActualHeight,96,96,PixelFormats.Pbgra32);bmp.Render(visual);var enc=new PngBitmapEncoder();enc.Frames.Add(BitmapFrame.Create(bmp));using var f=File.Create(Path.Combine(dest,file+".png"));enc.Save(f);results.Add(new{capture=file,width=visual.ActualWidth,height=visual.ActualHeight});}
+  var results=new List<object>();var p=w.Settings;var original=JsonSerializer.Serialize(p);var originalState=w.WindowState;
+  async Task Capture(string file){await Task.Delay(350);w.UpdateLayout();var visual=(FrameworkElement)w.Content;const double scale=1.5;var bmp=new RenderTargetBitmap((int)Math.Ceiling(visual.ActualWidth*scale),(int)Math.Ceiling(visual.ActualHeight*scale),96*scale,96*scale,PixelFormats.Pbgra32);bmp.Render(visual);var enc=new PngBitmapEncoder();enc.Frames.Add(BitmapFrame.Create(bmp));using var f=File.Create(Path.Combine(dest,file+".png"));enc.Save(f);results.Add(new{capture=file,width=visual.ActualWidth,height=visual.ActualHeight,captureDpi=144});}
   async Task CapturePopup(string file){await Task.Delay(250);var visual=w.VerifyPopupContent!;visual.UpdateLayout();var bmp=new RenderTargetBitmap((int)visual.ActualWidth,(int)visual.ActualHeight,96,96,PixelFormats.Pbgra32);bmp.Render(visual);var enc=new PngBitmapEncoder();enc.Frames.Add(BitmapFrame.Create(bmp));using var f=File.Create(Path.Combine(dest,file+".png"));enc.Save(f);}
   try{
-   w.Width=1180;w.Height=890;p.Zoom=1;p.Exploded=false;p.Turntable=false;p.Digital3D=true;p.Glass=true;p.LightPower=1;p.LightAngle=0;p.StudioLight=0;p.ReducedMotion=false;p.Hour24=false;p.ShowSeconds=true;p.Smooth=true;
+   w.WindowState=WindowState.Normal;w.Show();w.Width=1180;w.Height=890;p.Zoom=1;p.Exploded=false;p.Turntable=false;p.Digital3D=true;p.Glass=true;p.LightPower=1;p.LightAngle=0;p.StudioLight=0;p.ReducedMotion=false;p.Hour24=false;p.ShowSeconds=true;p.Smooth=true;
    w.VerifyClick("Analog · Ctrl+1");results.Add(new{test="visible Analog selector",passed=p.Type==0});
    w.VerifyClick("Digital · Ctrl+3");results.Add(new{test="visible Digital selector",passed=p.Type==2});
    w.VerifyClick("Sculpture · Ctrl+2");results.Add(new{test="visible Sculpture selector",passed=p.Type==1});
@@ -28,8 +28,12 @@ public static class Verification {
    p.Type=2;p.Finish=0;p.DigitalFace=0;w.VerifyCollection();await Capture("05-typography");
    p.DigitalFace=1;w.VerifyCollection();await Capture("06-split-flap");
    p.DigitalFace=2;p.Finish=2;w.VerifyCollection();await Capture("07-segment");
-   w.Width=640;w.Height=650;p.Type=1;w.VerifyCollection();await Capture("08-small-window");
+   int luminous=CountLuminousPixels(Path.Combine(dest,"07-segment.png"));results.Add(new{test="luminous segments remain visible in actual native pixels",pixels=luminous,passed=luminous>1000});
+   p.Finish=0;w.VerifyCollection();await Capture("detail-signal-amber");p.Finish=1;p.Dark=false;w.VerifyTheme();await Capture("detail-signal-champagne-light");p.Dark=true;p.Finish=2;w.VerifyTheme();
+   w.WindowState=WindowState.Normal;w.Width=640;w.Height=650;p.Type=1;w.VerifyCollection();await Capture("08-small-window");
+   results.Add(new{test="native small window actually resizes",width=w.ActualWidth,height=w.ActualHeight,passed=Math.Abs(w.ActualWidth-640)<2&&Math.Abs(w.ActualHeight-650)<2});
    w.VerifyFocus();w.Width=520;w.Height=530;await Capture("09-compact-focus");w.VerifyFocus();
+   results.Add(new{test="native compact window actually resizes",width=w.ActualWidth,height=w.ActualHeight,passed=Math.Abs(w.ActualWidth-520)<2&&Math.Abs(w.ActualHeight-530)<2});
    w.Width=1180;w.Height=890;w.VerifyMode("Timer");await Capture("10-timer");
    w.VerifyTimerInput("27:05:10");results.Add(new{test="direct timer input beyond 24 hours",passed=w.VerifyRemaining==new TimeSpan(27,5,10)});
    w.VerifyTimerInput("00:99:00");w.VerifyTimer();results.Add(new{test="invalid numeric input does not start timer",passed=!w.VerifyTimerRunning});
@@ -59,14 +63,35 @@ public static class Verification {
    w.Width=640;w.Height=650;p.Type=2;p.DigitalFace=1;w.VerifyCollection();w.ObjectView.ResetOrbit();await Capture("20-small-digital-object");
    w.Width=1180;w.Height=890;p.Type=1;p.Finish=0;p.Exploded=false;p.Turntable=false;w.VerifyCollection();w.ObjectView.ResetOrbit();
    w.VerifyMode("Clock");p.Type=1;p.Finish=0;w.VerifyCollection();w.VerifySettings();await Capture("13-settings-underlying-window");await CapturePopup("15-settings-popover");w.VerifyClosePopup();
+   foreach(var face in new[]{-1,0,1,2}){
+    p.Type=face<0?1:2;p.DigitalFace=Math.Max(0,face);p.Finish=0;p.Exploded=false;p.ReducedMotion=false;w.VerifyCollection();w.ObjectView.ResetOrbit();await Task.Delay(200);
+    results.Add(new{test="detailed object runtime budget / "+w.ObjectView.ModelKey,triangles=w.ObjectView.TriangleCount,batches=w.ObjectView.PartCount,passed=w.ObjectView.TriangleCount<350000&&w.ObjectView.PartCount<120&&w.ObjectView.ReflectiveParts>0});
+    w.ObjectView.SetView("Rear");await Task.Delay(800);await Capture("detail-"+w.ObjectView.ModelKey+"-rear");
+    p.Exploded=true;w.ObjectView.SetView("Exploded");await Task.Delay(700);await Capture("detail-"+w.ObjectView.ModelKey+"-open");
+   }
+   p.Type=1;p.Exploded=false;p.ReducedMotion=false;w.VerifyCollection();var fixture=new DateTime(2026,10,17,10,8,30);w.ObjectView.Update(fixture);double balance=w.ObjectView.MechanismAngle;w.ObjectView.Update(fixture.AddMilliseconds(100));
+   results.Add(new{test="exhibition balance is independently animated",passed=w.ObjectView.MechanicalParts>=6&&Math.Abs(balance-w.ObjectView.MechanismAngle)>10});
+   p.ReducedMotion=true;w.ObjectView.Update(fixture.AddMilliseconds(200));results.Add(new{test="reduced motion rests the entire exhibition mechanism",passed=w.ObjectView.MechanismAtRest});p.ReducedMotion=false;
+   results.Add(new{measurement="last normal-driven reflection update milliseconds",value=w.ObjectView.ReflectionUpdateMilliseconds});
+   results.Add(new{measurement="WPF rendering tier",value=RenderCapability.Tier>>16});
    p.Save();var read=Preferences.Load();results.Add(new{test="preferences round trip",passed=read.Type==p.Type&&read.Finish==p.Finish&&read.Dark==p.Dark});
   }catch(Exception e){results.Add(new{error=e.ToString()});}
   finally{
    // Restore user choices after the verification pass.
    File.WriteAllText(Preferences.FilePath,original);var restored=JsonSerializer.Deserialize<Preferences>(original)!;
    foreach(var property in typeof(Preferences).GetProperties(System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.Instance))if(property.CanRead&&property.CanWrite)property.SetValue(p,property.GetValue(restored));
-   w.VerifyStopwatchPause();w.VerifyDismiss();w.Width=Math.Clamp(restored.Width,520,1600);w.Height=Math.Clamp(restored.Height,530,1200);w.VerifyTheme();w.VerifyMode("Clock");
+   w.VerifyStopwatchPause();w.VerifyDismiss();w.Width=Math.Clamp(restored.Width,520,1600);w.Height=Math.Clamp(restored.Height,530,1200);w.WindowState=originalState;w.VerifyTheme();w.VerifyMode("Clock");
    File.WriteAllText(Path.Combine(dest,"results.json"),JsonSerializer.Serialize(results,new JsonSerializerOptions{WriteIndented=true}));
   }
+ }
+ static int CountLuminousPixels(string path){
+  // A raster check catches depth/occlusion bugs that correct material counts miss.
+  using var file=File.OpenRead(path);var decoder=new PngBitmapDecoder(file,BitmapCreateOptions.PreservePixelFormat,BitmapCacheOption.OnLoad);
+  var image=new FormatConvertedBitmap(decoder.Frames[0],PixelFormats.Bgra32,null,0);
+  int width=image.PixelWidth,height=image.PixelHeight,stride=width*4;var bytes=new byte[stride*height];image.CopyPixels(bytes,stride,0);int count=0;
+  // Read the encoded screenshot and exclude the colon: two bright dots cannot
+  // make this pass when the actual digits are hidden by an optical cell.
+  for(int y=(int)(height*.28);y<height*.72;y++)for(int x=(int)(width*.15);x<width*.39;x++){int i=y*stride+x*4;if(bytes[i]>150&&bytes[i+1]>150&&bytes[i+2]<bytes[i+1]*.90)count++;}
+  return count;
  }
 }

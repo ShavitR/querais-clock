@@ -1,13 +1,14 @@
 import bpy
 from pathlib import Path
 ROOT=Path(globals().get('QUERAIS_PROJECT_ROOT', Path.cwd()))
+bpy.ops.wm.open_mainfile(filepath=str(ROOT/'assets/querais-collection.blend'))
 # Save sources already contain refined materials and all zero-pose editing data.
 for key,name in [('atelier','Atelier · Analog'),('slate','Slate · Typography'),('relay','Relay · Split flap'),('signal','Signal · Luminous')]:
  s=bpy.data.scenes[name];window=bpy.context.window_manager.windows[0];window.scene=s
  with bpy.context.temp_override(window=window,scene=s):
   bpy.ops.object.select_all(action='DESELECT')
   for o in list(s.objects):
-   if o.type=='FONT':
+   if o.type in {'FONT','CURVE'}:
     o.select_set(True);bpy.context.view_layer.objects.active=o;bpy.ops.object.convert(target='MESH');o.select_set(False)
   for o in s.objects:
    if o.type=='MESH' and not o.get('runtime_group','').startswith('Flip_'):o.select_set(True)

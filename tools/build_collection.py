@@ -2,15 +2,20 @@ import bpy, math, json, gzip
 from pathlib import Path
 from mathutils import Vector
 ROOT=Path(globals().get('QUERAIS_PROJECT_ROOT', Path.cwd()));OUT=ROOT/'assets/collection';OUT.mkdir(exist_ok=True)
+# This file owns the collection source. Keep unrelated Blender files separate.
 # Four original objects in separate editable scenes, one source file.
 for obj in list(bpy.data.objects):bpy.data.objects.remove(obj,do_unlink=True)
+staging=bpy.data.scenes.new('Querais build staging');bpy.context.window.scene=staging
+for old in list(bpy.data.scenes):
+ if old!=staging:bpy.data.scenes.remove(old)
+for old in list(bpy.data.materials):bpy.data.materials.remove(old)
 materials={}
 def material(name,c,metal=0,rough=.3,emission=0):
- m=bpy.data.materials.new(name);m.diffuse_color=(*c,1);m.use_nodes=True;p=m.node_tree.nodes.get('Principled BSDF');p.inputs['Base Color'].default_value=(*c,1);p.inputs['Metallic'].default_value=metal;p.inputs['Roughness'].default_value=rough
+ m=bpy.data.materials.new(name);m.diffuse_color=(*c,1);m.use_nodes=True;p=next(n for n in m.node_tree.nodes if n.type=='BSDF_PRINCIPLED');p.inputs['Base Color'].default_value=(*c,1);p.inputs['Metallic'].default_value=metal;p.inputs['Roughness'].default_value=rough
  if emission:p.inputs['Emission Color'].default_value=(*c,1);p.inputs['Emission Strength'].default_value=emission
  materials[name]=m;return m
 material('shell',(.055,.065,.075),.7,.27);material('steel',(.44,.48,.52),.9,.23);material('polished',(.76,.80,.83),.98,.12);material('dial',(.79,.78,.73),.12,.32);material('ink',(.012,.019,.023),.1,.32);material('lume',(.85,.82,.70),.12,.29);material('accent',(.92,.23,.085),.35,.22);material('rubber',(.013,.018,.023),0,.57);material('glass',(.10,.14,.17),.05,.07);material('screen',(.008,.013,.018),.05,.18);material('emission',(.9,.37,.13),.1,.25,2);material('lettering',(.62,.66,.66),.5,.3)
-p=materials['glass'].node_tree.nodes.get('Principled BSDF');p.inputs['Transmission Weight'].default_value=1;p.inputs['IOR'].default_value=1.35
+p=next(n for n in materials['glass'].node_tree.nodes if n.type=='BSDF_PRINCIPLED');p.inputs['Transmission Weight'].default_value=1;p.inputs['IOR'].default_value=1.35
 font=bpy.data.fonts.load('C:/Windows/Fonts/bahnschrift.ttf');serif=bpy.data.fonts.load('C:/Windows/Fonts/georgia.ttf')
 scenes=[];current=None
 
@@ -144,47 +149,31 @@ for x in [-2.45,2.45]:box('Signal foot',(x,-1.38,-.12),(.78,.15,.52),'rubber','S
 for i in range(9):
  box('Cooling groove',(-1.3+i*.32,1.29,-.14),(.055,.025,.27),'shell','Cooling',.008)
 
+exec(compile((ROOT/'tools/collection_details.py').read_text(encoding='utf-8-sig'),str(ROOT/'tools/collection_details.py'),'exec'))
+
 # The same studio rig is retained in each editable scene.
 for s in scenes:
- bpy.context.window.scene=s;s.render.engine='CYCLES';s.cycles.samples=40;s.cycles.use_denoising=True;s.world=bpy.data.worlds.new(s.name+' world');s.world.use_nodes=True;s.world.node_tree.nodes['Background'].inputs[0].default_value=(.09,.11,.14,1);s.world.node_tree.nodes['Background'].inputs[1].default_value=.45
+ bpy.context.window.scene=s;s.render.engine='CYCLES';s.cycles.samples=64;s.cycles.use_denoising=True;s.world=bpy.data.worlds.new(s.name+' world');s.world.use_nodes=True;world=next(n for n in s.world.node_tree.nodes if n.type=='BACKGROUND');world.inputs[0].default_value=(.09,.11,.14,1);world.inputs[1].default_value=.45
  for name,loc,power,size,color in [('Softbox key',(-3,4,6),550,5,(.90,.95,1)),('Warm rim',(4,1,3),400,3,(1,.8,.61)),('Strip edge',(-4,-2,2),300,2,(.66,.81,1))]:
   bpy.ops.object.light_add(type='AREA',location=loc);o=bpy.context.object;o.name=name;o.data.energy=power;o.data.shape='RECTANGLE';o.data.size=size;o.data.size_y=size*.5;o.data.color=color;o.rotation_euler=(Vector((0,0,0))-o.location).to_track_quat('-Z','Y').to_euler()
  bpy.ops.object.camera_add();cam=bpy.context.object;cam.rotation_euler=(math.radians(13),math.radians(-12),0);cam.location=cam.rotation_euler.to_quaternion()@Vector((0,0,12));cam.data.type='ORTHO';cam.data.ortho_scale=5.6 if 'Atelier' in s.name else 8.4;s.camera=cam;s.render.film_transparent=True;s.render.image_settings.file_format='PNG';s.render.resolution_x=1200;s.render.resolution_y=1100 if 'Atelier' in s.name else 720;s.render.resolution_percentage=100;s.view_settings.view_transform='AgX'
-# Runtime export: real evaluated geometry, native normals, proper UVs and independent parts.
-for s,key in zip(scenes,['atelier','slate','relay','signal']):
- bpy.context.window.scene=s;dg=bpy.context.evaluated_depsgraph_get();groups={}
+# Export evaluated geometry into bounded native batches.
+exec(compile((ROOT/'tools/export_runtime_meshes.py').read_text(encoding='utf-8-sig'),'export_runtime_meshes.py','exec'))
+# Save editable text, construction and neutral animation pivots.
+for s in scenes:
+ bpy.context.window.scene=s;groups={}
  for o in list(s.objects):
-  if o.type not in {'MESH','FONT'} or o.get('preview_only',False):continue
-  ev=o.evaluated_get(dg);me=ev.to_mesh();me.calc_loop_triangles();mat=o.data.materials[0].name;group=o.get('runtime_group',o.name);gkey=(group,mat)
-  g=groups.setdefault(gkey,{'name':group,'material':mat,'positions':[],'normals':[],'uv':[],'indices':[],'lookup':{}})
-  for tri in me.loop_triangles:
-   for li in tri.loops:
-    v=o.matrix_world@me.vertices[me.loops[li].vertex_index].co;n=o.matrix_world.to_3x3()@me.corner_normals[li].vector
-    uv=me.uv_layers.active.data[li].uv if me.uv_layers.active else Vector(((v.x+4)/8,(v.y+2)/4))
-    pos=tuple(round(c,5) for c in v);normal=tuple(round(c,5) for c in n);tex=tuple(round(c,5) for c in uv);lookup=pos+normal+tex
-    if lookup not in g['lookup']:g['lookup'][lookup]=len(g['positions'])//3;g['positions'].extend(pos);g['normals'].extend(normal);g['uv'].extend(tex)
-    g['indices'].append(g['lookup'][lookup])
-  ev.to_mesh_clear()
- for g in groups.values():del g['lookup']
- payload={'key':key,'width':4.7 if key=='atelier' else 7.3,'height':4.5 if key=='atelier' else 3.7,'parts':list(groups.values())}
- (OUT/(key+'.mesh.json.gz')).write_bytes(gzip.compress(json.dumps(payload,separators=(',',':')).encode(),compresslevel=9))
- print('EXPORTED',key,len(groups),'parts',sum(len(g['indices'])//3 for g in groups.values()),'triangles')
-# Save editable source before converting text for portable GLB.
-bpy.context.window.scene=scenes[0];bpy.ops.wm.save_as_mainfile(filepath=str(ROOT/'assets/querais-collection.blend'))
-for s,key in zip(scenes,['atelier','slate','relay','signal']):
- bpy.context.window.scene=s
- # Preview-only lettering stays modeled in each GLB. Hidden flip plates are excluded.
- for o in list(s.objects):
-  if o.type=='FONT':
-   bpy.ops.object.select_all(action='DESELECT');o.select_set(True);bpy.context.view_layer.objects.active=o;bpy.ops.object.convert(target='MESH')
- bpy.ops.object.select_all(action='DESELECT')
- for o in s.objects:
-  if o.type=='MESH' and not o.name.startswith('Flip_'):o.select_set(True)
- bpy.ops.export_scene.gltf(filepath=str(OUT/(key+'.glb')),export_format='GLB',use_selection=True,export_apply=True,export_draco_mesh_compression_enable=True)
- if key=='atelier':
-  for o in s.objects:
-   group=o.get('runtime_group','')
-   if group.startswith('Hand_'):
-    angle={'Hand_Hour':-305,'Hand_Minute':-60,'Hand_Second':-228}[group];o.rotation_euler.z=math.radians(angle)
- s.render.filepath=str(OUT/(key+'-preview.png'));bpy.ops.render.render(write_still=True)
-print('QUERAIS COLLECTION COMPLETE: 4 scenes, 4 real rendered previews, editable source, compressed runtime meshes and GLBs.')
+  if o.type not in {'MESH','FONT','CURVE'}:continue
+  name=o.get('runtime_group','Preview')
+  if name not in groups:
+   pivot=bpy.data.objects.new('Assembly / '+name,None);s.collection.objects.link(pivot);pivot.empty_display_size=.12
+   if 'runtime_pivot' in o:pivot.location=o['runtime_pivot']
+   elif name=='Crown':pivot.location=(2.12,0,-.03)
+   groups[name]=pivot
+  # matrix_world can be stale until Blender evaluates a newly created parent.
+  # Set the local basis explicitly so nonzero assembly pivots cannot translate
+  # the wheel/crown twice. This also preserves a useful animation pivot in GLB.
+  matrix=o.matrix_world.copy();o.parent=groups[name];o.matrix_parent_inverse.identity();o.matrix_basis=groups[name].matrix_basis.inverted()@matrix
+ s.render.filepath='//renders/'+s.name.split(' ')[0].lower()+'.png'
+bpy.context.window.scene=scenes[0];bpy.data.scenes.remove(staging);bpy.ops.wm.save_as_mainfile(filepath=str(ROOT/'assets/querais-collection.blend'))
+print('QUERAIS DETAIL COLLECTION SAVED: four editable scenes and independent native runtime assemblies. Run render_collection.py and export_collection_glb.py next.')

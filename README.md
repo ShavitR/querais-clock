@@ -33,18 +33,20 @@ The portable, unsigned release includes .NET. You do not need to install .NET, B
 | Atelier | Slate |
 | --- | --- |
 | ![Atelier in light theme](docs/screenshots/atelier-light.png) | ![Slate typographic 3D clock](docs/screenshots/slate.png) |
-| Fluted metal case, floating hands, live date aperture and engraved caseback. | Glass-fronted typography in an aluminum frame on cantilever feet. |
+| Domed sapphire, machined sockets, floating hands and a live date. Turn it over for a jeweled exhibition movement. | A hollow aluminium extrusion, diamond-cut aperture, knurled controls and an inspectable electronic assembly. |
 
 | Relay | Signal |
 | --- | --- |
 | ![Relay split-flap 3D clock](docs/screenshots/relay.png) | ![Signal luminous 3D clock](docs/screenshots/signal.png) |
-| Four physical split-flap mechanisms with plates that rotate when the minute changes. | Extruded luminous segments, small seconds, smoked glass and a beveled housing. |
+| Four flap cartridges with radial card stacks, axles and brass indexing wheels. Independent plates turn with the minute. | Recessed segment optics, small seconds, smoked glass, cooling ribs and a finned instrument case. |
 
 Three finishes—**Silver, Champagne and Petrol**—and light/dark themes. Studio and Precision flat analog faces and all three flat digital faces are included too.
 
 ## Pick it up. Turn it over.
 
 Drag to orbit, explore the caseback, or open **Inspect** to separate the assembly. Shift-drag to sculpt the light. Turn the crown, hide the glass, or let the object rotate on its turntable.
+
+Version 1.2 adds original internal construction to all four objects and view-responsive studio reflections. Read the [design research and rendering notes](docs/DESIGN_RESEARCH.md), or browse the [actual Blender renders](docs/RENDER_GALLERY.md). The illustrative mechanisms do not calculate time; the system clock does.
 
 <img src="docs/screenshots/inspection.png" alt="Exploded clock assembly with separated case, dial, hands, glass and crown" width="900">
 
@@ -102,7 +104,7 @@ dotnet build src/Querais -c Release
 dotnet run --project src/Querais -c Release -- --verify
 ```
 
-The in-app harness invokes native WPF handlers and captures the visual tree at several sizes. The initial community release passed **28 automated checks**, covering time tools, preferences, model interactions, motion and hidden-window rendering. See [verification details](VERIFICATION.md) for testing limits. Manual DPI, accessibility and multi-monitor qualification remain areas for community help.
+The last full desktop run passed **37 native checks**, covering time tools, preferences, model interactions, visible segment pixels, actual resizing, motion and hidden-window rendering. The final motion adjustment passed **seven windowless checks**. All four compressed assets pass geometry and batch-budget validation. See [verification details](VERIFICATION.md) for provenance and testing limits. OS-wide DPI, accessibility and multi-monitor qualification remain areas for community help.
 
 ## Made to be opened up
 

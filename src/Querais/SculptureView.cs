@@ -20,10 +20,18 @@ public sealed class SculptureView : Grid {
   public TranslateTransform3D Lift=new();
   public AxisAngleRotation3D? Rotation;
   public Material? Base;
+  public MeshGeometry3D Mesh=null!;public Vector3DCollection Normals=null!;
+  public double Ratio=1,ReflectionAngle=double.NaN;public bool Reflective;
  }
  sealed class ObjectScene {
   public string Key="";public double Width,Height;
   public Model3DGroup Model=new();public List<Part> Parts=new();
+ }
+ sealed class AssetScene {public double Width{get;set;}public double Height{get;set;}public AssetPart[] Parts{get;set;}=Array.Empty<AssetPart>();}
+ sealed class AssetPart {
+  public string Name{get;set;}="";public string Material{get;set;}="";
+  public double[] Positions{get;set;}=Array.Empty<double>();public double[] Normals{get;set;}=Array.Empty<double>();public double[] Uv{get;set;}=Array.Empty<double>();
+  public int[] Indices{get;set;}=Array.Empty<int>();public double[]? Pivot{get;set;}public double Ratio{get;set;}=1;
  }
  public Preferences Pref {get;}
  readonly Viewport3D viewport=new();readonly ModelVisual3D content=new();
@@ -34,10 +42,17 @@ public sealed class SculptureView : Grid {
  ObjectScene current=null!;Point? drag;Point dragStart,pointer;bool lightDrag,crownDrag;double crownAngle;
  double targetYaw=-13,targetPitch=13,explosion;long previousTicks;double lastDt=.033;
  string digits="",oldDigits="",lastDisplay="";DateTime flipAt=DateTime.MinValue;bool forceFlip;
+ DateTime reflectionAt=DateTime.MinValue;
  static readonly int[] Masks={0x3f,0x06,0x5b,0x4f,0x66,0x6d,0x7d,0x07,0x7f,0x6f};
  public long FrameCount {get;private set;}
  public string ModelKey=>current.Key;
  public int PartCount=>current.Parts.Count;
+ public int TriangleCount=>current.Parts.Sum(p=>p.Mesh.TriangleIndices.Count/3);
+ public int ReflectiveParts=>current.Parts.Count(p=>p.Reflective);
+ public int MechanicalParts=>current.Parts.Count(p=>p.Name.StartsWith("Gear_")||p.Name=="Balance");
+ public double MechanismAngle=>current.Parts.FirstOrDefault(p=>p.Name=="Balance")?.Rotation?.Angle??0;
+ public bool MechanismAtRest=>current.Parts.Where(p=>p.Name.StartsWith("Gear_")||p.Name=="Balance").All(p=>Math.Abs(p.Rotation!.Angle)<.001);
+ public double ReflectionUpdateMilliseconds {get;private set;}
  public double ViewYaw=>yaw.Angle;
  public double Explosion=>explosion;
  public bool Is3D=>Pref.Type==1||Pref.Type==2&&Pref.Digital3D;
@@ -76,23 +91,36 @@ public sealed class SculptureView : Grid {
   string key=Pref.Type==1?"atelier":new[]{"slate","relay","signal"}[Math.Clamp(Pref.DigitalFace,0,2)];
   if(current!=null&&current.Key==key)return;
   if(!scenes.TryGetValue(key,out var scene)){scene=Load(key);scenes[key]=scene;}
+  // Keep one neighbouring object warm; detailed geometry should not accumulate
+  // for the entire collection as users browse it.
+  if(scenes.Count>2){string? stale=scenes.Keys.FirstOrDefault(k=>k!=key&&k!=current?.Key);if(stale!=null)scenes.Remove(stale);}
   current=scene;content.Content=scene.Model;
   var transform=new Transform3DGroup();transform.Children.Add(new RotateTransform3D(yaw));transform.Children.Add(new RotateTransform3D(pitch));scene.Model.Transform=transform;
   digits=oldDigits=lastDisplay="";digitMaterials.Clear();ApplyFinish();
  }
  ObjectScene Load(string key){
-  using var file=File.OpenRead(Path.Combine(AppContext.BaseDirectory,"assets","collection",key+".mesh.json.gz"));using var zip=new GZipStream(file,CompressionMode.Decompress);using var doc=JsonDocument.Parse(zip);var data=doc.RootElement;
-  var scene=new ObjectScene{Key=key,Width=data.GetProperty("width").GetDouble(),Height=data.GetProperty("height").GetDouble()};
-  foreach(var item in data.GetProperty("parts").EnumerateArray()){
-   string name=item.GetProperty("name").GetString()!,role=item.GetProperty("material").GetString()!;var points=item.GetProperty("positions");var normals=item.GetProperty("normals");var uv=item.GetProperty("uv");var mesh=new MeshGeometry3D();
+  using var file=File.OpenRead(Path.Combine(AppContext.BaseDirectory,"assets","collection",key+".mesh.json.gz"));using var zip=new GZipStream(file,CompressionMode.Decompress);
+  // Stream directly into typed arrays. A JsonDocument token tree for hundreds
+  // of thousands of numeric vertices retains large pooled buffers unnecessarily.
+  var data=JsonSerializer.Deserialize<AssetScene>(zip,new JsonSerializerOptions{PropertyNameCaseInsensitive=true})!;
+  var scene=new ObjectScene{Key=key,Width=data.Width,Height=data.Height};
+  foreach(var item in data.Parts){
+   string name=item.Name,role=item.Material;var points=item.Positions;var normals=item.Normals;var uv=item.Uv;
+   var mesh=new MeshGeometry3D{Positions=new Point3DCollection(points.Length/3),Normals=new Vector3DCollection(normals.Length/3),TextureCoordinates=new PointCollection(uv.Length/2),TriangleIndices=new Int32Collection(item.Indices.Length)};
    bool nativeDial=name=="DialText"&&key=="atelier";
+   bool reflective=StudioMetal.Reflects(role);
    bool display=name.StartsWith("Display_")||name.StartsWith("Date_")||name.StartsWith("Flap_")||name.StartsWith("Flip_");
-   for(int i=0;!nativeDial&&i<points.GetArrayLength();i+=3){double x=points[i].GetDouble(),y=points[i+1].GetDouble(),z=points[i+2].GetDouble();mesh.Positions.Add(new Point3D(x,y,z));mesh.Normals.Add(new Vector3D(normals[i].GetDouble(),normals[i+1].GetDouble(),normals[i+2].GetDouble()));int v=i/3;mesh.TextureCoordinates.Add(display?new Point(uv[v*2].GetDouble(),uv[v*2+1].GetDouble()):new Point((x+scene.Width/2)/scene.Width,(y+scene.Height/2)/scene.Height));}
+   for(int i=0;!nativeDial&&i<points.Length;i+=3){double x=points[i],y=points[i+1],z=points[i+2];mesh.Positions.Add(new Point3D(x,y,z));mesh.Normals.Add(new Vector3D(normals[i],normals[i+1],normals[i+2]));int v=i/3;mesh.TextureCoordinates.Add(display?new Point(uv[v*2],uv[v*2+1]):new Point((x+scene.Width/2)/scene.Width,(y+scene.Height/2)/scene.Height));}
    if(nativeDial){mesh.Positions=new Point3DCollection{new(-1.65,-1.65,.084),new(1.65,-1.65,.084),new(1.65,1.65,.084),new(-1.65,1.65,.084)};mesh.Normals=new Vector3DCollection{new(0,0,1),new(0,0,1),new(0,0,1),new(0,0,1)};mesh.TextureCoordinates=new PointCollection{new(0,1),new(1,1),new(1,0),new(0,0)};mesh.TriangleIndices=new Int32Collection{0,1,2,0,2,3};}
-   else foreach(var ix in item.GetProperty("indices").EnumerateArray())mesh.TriangleIndices.Add(ix.GetInt32());mesh.Freeze();var part=new Part{Name=name,Role=role,Model=new GeometryModel3D{Geometry=mesh}};var transform=new Transform3DGroup();
+   else foreach(int ix in item.Indices)mesh.TriangleIndices.Add(ix);
+   mesh.Positions.Freeze();mesh.Normals.Freeze();mesh.TriangleIndices.Freeze();if(!reflective)mesh.Freeze();
+   var part=new Part{Name=name,Role=role,Mesh=mesh,Normals=mesh.Normals,Reflective=reflective,Model=new GeometryModel3D{Geometry=mesh}};var transform=new Transform3DGroup();
    if(name.StartsWith("Hand_")){part.Rotation=new AxisAngleRotation3D(new Vector3D(0,0,1),0);transform.Children.Add(new RotateTransform3D(part.Rotation));}
    else if(name.StartsWith("Flip_")){int i=int.Parse(name.Split('_')[1]);double x=(i-1.5)*1.48+(i>=2?.10:-.10);part.Rotation=new AxisAngleRotation3D(new Vector3D(1,0,0),0);transform.Children.Add(new RotateTransform3D(part.Rotation,new Point3D(x,.09,.287)));}
    else if(name=="Crown"){part.Rotation=new AxisAngleRotation3D(new Vector3D(1,0,0),0);transform.Children.Add(new RotateTransform3D(part.Rotation,new Point3D(2.12,0,-.03)));}
+   else if(item.Pivot is {} pivot){
+    part.Ratio=item.Ratio;part.Rotation=new AxisAngleRotation3D(new Vector3D(0,0,1),0);transform.Children.Add(new RotateTransform3D(part.Rotation,new Point3D(pivot[0],pivot[1],pivot[2])));
+   }
    transform.Children.Add(part.Lift);part.Model.Transform=transform;scene.Parts.Add(part);scene.Model.Children.Add(part.Model);
   }
   return scene;
@@ -110,29 +138,33 @@ public sealed class SculptureView : Grid {
     "steel" or "polished"=>Pref.Finish==1?"#C0A578":Pref.Finish==2?"#8CA4AE":"#BCC6CD",
     "lettering"=>current.Key=="atelier"?(darkDial?"#AEB8B8":"#516369"):"#A4B1BA",
     "rubber"=>"#141A20","screen"=>"#10171D",_=>"#AAB3B8"};
+   if(role=="brass")color="#B89B61";if(role=="jewel")color="#972943";if(role=="pcb")color="#18473F";if(role=="ceramic")color="#293841";
    if(part.Name=="DialText"&&current.Key=="atelier"){part.Base=DialLettering();part.Model.Material=part.Base;part.Model.BackMaterial=null;continue;}
    if(part.Name=="DialDetail"&&current.Key=="atelier"){part.Base=null;part.Model.Material=part.Model.BackMaterial=null;continue;}
    if(role=="glass"){
     var glass=new MaterialGroup();glass.Children.Add(new DiffuseMaterial(new SolidColorBrush(Color.FromArgb(2,220,235,245))));glass.Children.Add(new SpecularMaterial(new SolidColorBrush(Color.FromArgb(45,215,233,249)),120));
     var reflection=new LinearGradientBrush{StartPoint=new Point(0,0),EndPoint=new Point(1,1)};foreach(var stop in new (double x,byte a)[]{(0,1),(.24,2),(.42,13),(.52,2),(1,0)})reflection.GradientStops.Add(new GradientStop(Color.FromArgb(stop.a,220,234,249),stop.x));glass.Children.Add(new EmissiveMaterial(reflection));glass.Freeze();part.Base=glass;
    }else if(role=="emission")part.Base=SegmentMaterial(false);
+   else if(role=="dial")part.Base=StudioMetal.Dial(color);
    else{
     Brush diffuse=new SolidColorBrush(C(color));
-    if(role is "steel" or "polished"){
-     var gradient=new LinearGradientBrush{StartPoint=new Point(0,0),EndPoint=new Point(1,.25)};Color c=C(color);Color Shade(double f)=>Color.FromRgb((byte)Math.Min(255,c.R*f),(byte)Math.Min(255,c.G*f),(byte)Math.Min(255,c.B*f));
-     foreach(var stop in new (double x,double f)[]{(0,.50),(.13,.82),(.21,1.2),(.28,.95),(.45,.56),(.59,.85),(.71,1.22),(.79,.95),(1,.58)})gradient.GradientStops.Add(new GradientStop(Shade(stop.f),stop.x));diffuse=gradient;
-    }
-    var mat=new MaterialGroup();mat.Children.Add(new DiffuseMaterial(diffuse));if(role is "steel" or "polished" or "shell" or "accent")mat.Children.Add(new SpecularMaterial(new SolidColorBrush(Color.FromArgb(role=="polished"?(byte)210:(byte)100,235,241,246)),role=="polished"?100:55));mat.Freeze();part.Base=mat;
+    if(part.Reflective)diffuse=StudioMetal.Reflection(color,role);
+    var mat=new MaterialGroup();mat.Children.Add(new DiffuseMaterial(diffuse));if(part.Reflective||role=="accent")mat.Children.Add(new SpecularMaterial(new SolidColorBrush(Color.FromArgb(role=="polished"?(byte)180:(byte)75,235,241,246)),role=="polished"?105:50));mat.Freeze();part.Base=mat;
    }
    part.Model.Material=part.Name.StartsWith("Flip_")?null:part.Base;part.Model.BackMaterial=part.Name.StartsWith("Flip_")||role=="glass"?null:part.Base;
   }
-  onSegment=SegmentMaterial(true);offSegment=SegmentMaterial(false);ApplyLighting();Update(DateTime.Now);
+  onSegment=SegmentMaterial(true);offSegment=SegmentMaterial(false);foreach(var p in current.Parts)p.ReflectionAngle=double.NaN;reflectionAt=DateTime.MinValue;ApplyLighting();Update(DateTime.Now);
  }
  Material? onSegment,offSegment;
  Material SegmentMaterial(bool on){
   // WPF emissive radiance is linear: keep the radiance below clipping.
-  Color c=C(Pref.Finish==2?"#4B9297":Pref.Finish==1?"#B0782F":"#C6612D");
-  Material mat=on?new EmissiveMaterial(new SolidColorBrush(c)):new DiffuseMaterial(new SolidColorBrush(C("#10212A")));mat.Freeze();return mat;
+  Color c=C(Pref.Finish==2?"#8DDBDF":Pref.Finish==1?"#D3AE66":"#EA9A57");
+  // Emissive-only WPF surfaces do not establish an opaque depth layer. The
+  // black diffuse pass keeps later optical-cell geometry behind the emitter.
+  Material mat;
+  if(on){var lit=new MaterialGroup();lit.Children.Add(new DiffuseMaterial(Brushes.Black));lit.Children.Add(new EmissiveMaterial(new SolidColorBrush(c)));mat=lit;}
+  else mat=new DiffuseMaterial(new SolidColorBrush(C("#10212A")));
+  mat.Freeze();return mat;
  }
  Material DialLettering(){
   var dg=new DrawingGroup();bool dark=Pref.Finish!=0;string ink=dark?"#CBCAB9":"#132128";
@@ -169,14 +201,39 @@ public sealed class SculptureView : Grid {
    if(p.Name=="Hand_Minute")p.Rotation!.Angle=-(now.Minute+sec/60)*6;
    if(p.Name=="Hand_Second")p.Rotation!.Angle=-sec*6;
    if(p.Name=="Crown")p.Rotation!.Angle=crownAngle;
+   // Decorative exhibition mechanism: time-driven train and oscillator. The face
+   // remains authoritative system time, not a simulated mechanical time source.
+   if(p.Name.StartsWith("Gear_"))p.Rotation!.Angle=reduced?0:-(now.TimeOfDay.TotalSeconds*6*p.Ratio)%360;
+   if(p.Name=="Balance")p.Rotation!.Angle=reduced?0:Math.Sin(now.TimeOfDay.TotalSeconds*Math.PI*5)*24;
    double layer=p.Name switch{"Glass"=>1.32,"Hand_Second"=>1.04,"Spindle"=>1.06,"Hand_Minute"=>.87,"Hand_Hour"=>.68,"Indices" or "DialText"=>.40,"Dial" or "DialDetail" or "Date_Display" or "DateSurround"=>.25,"Bezel" or "BezelScrews"=>.56,"ScreenBack"=>.3,"Brand"=>.35,_=>p.Name.StartsWith("Flap_")||p.Name.StartsWith("Flip_")||p.Name.StartsWith("Seg_")?.63:0};
+   if(p.Name=="RearCover"||p.Name=="RearSeal")layer=-1.0;
+   if(p.Name=="RearGlass")layer=-1.2;
+   if(p.Name=="MovementBridge"||p.Name=="Jewels")layer=-.40;
+   if(p.Name.StartsWith("Gear_")||p.Name=="Balance")layer=-.22;
+   if(p.Name=="Electronics"||p.Name=="Components"||p.Name=="Circuit")layer=-.35;
    p.Lift.OffsetZ=layer*explosion;p.Lift.OffsetX=p.Name=="Crown"?explosion*.55:0;
-   if(p.Name=="Glass"){p.Model.Material=Pref.Glass?p.Base:null;p.Model.BackMaterial=null;}
+   if(p.Name is "Glass" or "RearGlass"){p.Model.Material=Pref.Glass?p.Base:null;p.Model.BackMaterial=null;}
    if(p.Name=="Hand_Second"){p.Model.Material=Pref.ShowSeconds?p.Base:null;p.Model.BackMaterial=Pref.ShowSeconds?p.Base:null;}
   }
   double aspect=Math.Max(.1,ActualWidth/Math.Max(1,ActualHeight));double width=Math.Max(current.Width,current.Height*aspect)*1.17/Pref.Zoom;
   ((OrthographicCamera)viewport.Camera).Width=width*(1+explosion*.14);
   UpdateDisplays(now,reduced);
+  UpdateReflections();
+ }
+ void UpdateReflections(){
+  // Throttled independently of hands. Static surfaces are left untouched while
+  // the camera and light rest; only small moving gear batches then need work.
+  if((DateTime.UtcNow-reflectionAt).TotalMilliseconds<100)return;reflectionAt=DateTime.UtcNow;
+  var timer=System.Diagnostics.Stopwatch.StartNew();
+  var lighting=new Matrix3D();lighting.Rotate(new Quaternion(new Vector3D(0,1,0),Pref.LightAngle*.35+(Pref.StudioLight==1?12:Pref.StudioLight==2?-12:0)));
+  foreach(var p in current.Parts){
+   if(!p.Reflective)continue;double angle=yaw.Angle*3+pitch.Angle*7+Pref.LightAngle*.35+Pref.StudioLight*12+(p.Rotation?.Angle??0)*11;
+   if(!double.IsNaN(p.ReflectionAngle)&&Math.Abs(angle-p.ReflectionAngle)<.15)continue;p.ReflectionAngle=angle;
+   var matrix=p.Model.Transform.Value*current.Model.Transform.Value*lighting;var points=new Point[p.Normals.Count];
+   for(int i=0;i<points.Length;i++){var n=matrix.Transform(p.Normals[i]);points[i]=new Point(Math.Clamp(.5+n.X*.495,.005,.995),Math.Clamp(.5-n.Y*.495,.005,.995));}
+   var uv=new PointCollection(points);uv.Freeze();p.Mesh.TextureCoordinates=uv;
+  }
+  ReflectionUpdateMilliseconds=timer.Elapsed.TotalMilliseconds;
  }
  void UpdateDisplays(DateTime now,bool reduced){
   string time=now.ToString(Pref.Hour24?"HHmm":"hhmm",CultureInfo.InvariantCulture);string stamp=now.ToString("yyyyMMddHHmmss")+Pref.ShowSeconds+Pref.Hour24+Pref.Finish;

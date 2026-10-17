@@ -1,0 +1,30 @@
+[
+  {
+    "test": "exhibition balance animates without a window",
+    "passed": true
+  },
+  {
+    "test": "all exhibition gears and balance rest with reduced motion",
+    "passed": true
+  },
+  {
+    "test": "decorative mechanism stays at rest across elapsed time",
+    "passed": true
+  },
+  {
+    "test": "final runtime contract / atelier",
+    "passed": true
+  },
+  {
+    "test": "final runtime contract / slate",
+    "passed": true
+  },
+  {
+    "test": "final runtime contract / relay",
+    "passed": true
+  },
+  {
+    "test": "final runtime contract / signal",
+    "passed": true
+  }
+]

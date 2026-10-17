@@ -1,0 +1,30 @@
+[
+  {
+    "model": "atelier",
+    "triangles": 242276,
+    "material_batches": 68,
+    "compressed_bytes": 5822326,
+    "passed": true
+  },
+  {
+    "model": "slate",
+    "triangles": 101694,
+    "material_batches": 31,
+    "compressed_bytes": 1667609,
+    "passed": true
+  },
+  {
+    "model": "relay",
+    "triangles": 152504,
+    "material_batches": 57,
+    "compressed_bytes": 3067849,
+    "passed": true
+  },
+  {
+    "model": "signal",
+    "triangles": 171280,
+    "material_batches": 81,
+    "compressed_bytes": 2940971,
+    "passed": true
+  }
+]

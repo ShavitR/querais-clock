@@ -22,52 +22,91 @@
   {
     "capture": "01-sculpture-dark",
     "width": 1164,
-    "height": 851
+    "height": 851,
+    "captureDpi": 144
   },
   {
     "capture": "02-sculpture-light",
     "width": 1164,
-    "height": 851
+    "height": 851,
+    "captureDpi": 144
   },
   {
     "capture": "03-analog-precision",
     "width": 1164,
-    "height": 851
+    "height": 851,
+    "captureDpi": 144
   },
   {
     "capture": "04-analog-studio",
     "width": 1164,
-    "height": 851
+    "height": 851,
+    "captureDpi": 144
   },
   {
     "capture": "05-typography",
     "width": 1164,
-    "height": 851
+    "height": 851,
+    "captureDpi": 144
   },
   {
     "capture": "06-split-flap",
     "width": 1164,
-    "height": 851
+    "height": 851,
+    "captureDpi": 144
   },
   {
     "capture": "07-segment",
     "width": 1164,
-    "height": 851
+    "height": 851,
+    "captureDpi": 144
+  },
+  {
+    "test": "luminous segments remain visible in actual native pixels",
+    "pixels": 7306,
+    "passed": true
+  },
+  {
+    "capture": "detail-signal-amber",
+    "width": 1164,
+    "height": 851,
+    "captureDpi": 144
+  },
+  {
+    "capture": "detail-signal-champagne-light",
+    "width": 1164,
+    "height": 851,
+    "captureDpi": 144
   },
   {
     "capture": "08-small-window",
     "width": 624,
-    "height": 611
+    "height": 611,
+    "captureDpi": 144
+  },
+  {
+    "test": "native small window actually resizes",
+    "width": 640,
+    "height": 650,
+    "passed": true
   },
   {
     "capture": "09-compact-focus",
     "width": 504,
-    "height": 491
+    "height": 491,
+    "captureDpi": 144
+  },
+  {
+    "test": "native compact window actually resizes",
+    "width": 520,
+    "height": 530,
+    "passed": true
   },
   {
     "capture": "10-timer",
     "width": 1164,
-    "height": 851
+    "height": 851,
+    "captureDpi": 144
   },
   {
     "test": "direct timer input beyond 24 hours",
@@ -96,7 +135,8 @@
   {
     "capture": "11-stopwatch",
     "width": 1164,
-    "height": 851
+    "height": 851,
+    "captureDpi": 144
   },
   {
     "test": "stopwatch pause holds elapsed time",
@@ -105,7 +145,8 @@
   {
     "capture": "12-alarms",
     "width": 1164,
-    "height": 851
+    "height": 851,
+    "captureDpi": 144
   },
   {
     "test": "alarm fires once and disables one-shot",
@@ -126,17 +167,19 @@
   {
     "capture": "16-atelier-exploded",
     "width": 1164,
-    "height": 851
+    "height": 851,
+    "captureDpi": 144
   },
   {
     "test": "rear view rotates to caseback",
-    "angle": -179.99924898310508,
+    "angle": -179.9985595999172,
     "passed": true
   },
   {
     "capture": "17-atelier-caseback",
     "width": 1164,
-    "height": 851
+    "height": 851,
+    "captureDpi": 144
   },
   {
     "test": "glass control hides actual crystal mesh",
@@ -156,8 +199,8 @@
   },
   {
     "test": "turntable animates model",
-    "before": -12.987977416058746,
-    "after": -5.531294083928635,
+    "before": -12.990956964466024,
+    "after": -6.053701356470225,
     "passed": true
   },
   {
@@ -171,7 +214,8 @@
   {
     "capture": "18-relay-flipping",
     "width": 1164,
-    "height": 851
+    "height": 851,
+    "captureDpi": 144
   },
   {
     "test": "reduced motion suppresses mechanical transition",
@@ -184,7 +228,8 @@
   {
     "capture": "19-flat-fallback",
     "width": 1164,
-    "height": 851
+    "height": 851,
+    "captureDpi": 144
   },
   {
     "test": "flat face remains available",
@@ -193,12 +238,102 @@
   {
     "capture": "20-small-digital-object",
     "width": 624,
-    "height": 611
+    "height": 611,
+    "captureDpi": 144
   },
   {
     "capture": "13-settings-underlying-window",
     "width": 1164,
-    "height": 851
+    "height": 851,
+    "captureDpi": 144
+  },
+  {
+    "test": "detailed object runtime budget / atelier",
+    "triangles": 222962,
+    "batches": 68,
+    "passed": true
+  },
+  {
+    "capture": "detail-atelier-rear",
+    "width": 1164,
+    "height": 851,
+    "captureDpi": 144
+  },
+  {
+    "capture": "detail-atelier-open",
+    "width": 1164,
+    "height": 851,
+    "captureDpi": 144
+  },
+  {
+    "test": "detailed object runtime budget / slate",
+    "triangles": 101694,
+    "batches": 31,
+    "passed": true
+  },
+  {
+    "capture": "detail-slate-rear",
+    "width": 1164,
+    "height": 851,
+    "captureDpi": 144
+  },
+  {
+    "capture": "detail-slate-open",
+    "width": 1164,
+    "height": 851,
+    "captureDpi": 144
+  },
+  {
+    "test": "detailed object runtime budget / relay",
+    "triangles": 152504,
+    "batches": 57,
+    "passed": true
+  },
+  {
+    "capture": "detail-relay-rear",
+    "width": 1164,
+    "height": 851,
+    "captureDpi": 144
+  },
+  {
+    "capture": "detail-relay-open",
+    "width": 1164,
+    "height": 851,
+    "captureDpi": 144
+  },
+  {
+    "test": "detailed object runtime budget / signal",
+    "triangles": 171280,
+    "batches": 81,
+    "passed": true
+  },
+  {
+    "capture": "detail-signal-rear",
+    "width": 1164,
+    "height": 851,
+    "captureDpi": 144
+  },
+  {
+    "capture": "detail-signal-open",
+    "width": 1164,
+    "height": 851,
+    "captureDpi": 144
+  },
+  {
+    "test": "exhibition balance is independently animated",
+    "passed": true
+  },
+  {
+    "test": "reduced motion rests the exhibition oscillator",
+    "passed": true
+  },
+  {
+    "measurement": "last normal-driven reflection update milliseconds",
+    "value": 3.3117
+  },
+  {
+    "measurement": "WPF rendering tier",
+    "value": 2
   },
   {
     "test": "preferences round trip",
